@@ -1,0 +1,14 @@
+{
+  "name": "skate-reels",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Render animasi 3D skatepark jadi video MP4 9:16 dengan suara",
+  "scripts": {
+    "render": "node render.js"
+  },
+  "dependencies": {
+    "puppeteer": "^23.11.1",
+    "three": "0.128.0"
+  }
+}

@@ -1,0 +1,717 @@
+<title>Skatepark Kolong Flyover</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: one 9:16 reel frame (3D canvas + title, pin, subtitle overlays) with a small control strip below.
+   Record mode hides the strip and fills the screen so a screen recorder captures only the frame.
+   Single dark look on purpose: the scene is a night shot. */
+:root {
+  --bg: #0b1017;
+  --panel: #141b25;
+  --line: #243041;
+  --fg: #e9eef4;
+  --muted: #93a1b2;
+  --accent: #35d4ff;
+  --sub: #ffe34d;
+  --display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.5 var(--body);
+  margin: 0;
+  padding-block: 16px 32px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 520px; margin: 0 auto; display: grid; gap: 16px; justify-items: center; }
+
+.frame {
+  position: relative;
+  width: min(100%, calc((100dvh - 250px) * 0.5625));
+  min-width: min(100%, 280px);
+  aspect-ratio: 9 / 16;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0a1018;
+  border: 1px solid var(--line);
+  container-type: inline-size;
+}
+#cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+.hud { position: absolute; pointer-events: none; color: #fff; font-family: var(--display); }
+.tag { top: 3.4cqw; left: 4.5cqw; font-size: 4cqw; font-weight: 600; opacity: .8; letter-spacing: .02em; }
+.title {
+  top: 11cqw; left: 4.5cqw; right: 4.5cqw;
+  font-size: 8.6cqw; font-weight: 800; line-height: 1.04; letter-spacing: -.01em;
+  text-wrap: balance;
+  text-shadow: 0 .5cqw 2.2cqw rgba(0, 0, 0, .55);
+}
+.title .hl { color: var(--accent); }
+
+.pin { left: 0; top: 0; opacity: 0; will-change: transform; }
+.pin .dot {
+  position: absolute; left: -1.9cqw; top: -1.9cqw; width: 3.8cqw; height: 3.8cqw;
+  border-radius: 50%; background: #fff; border: .9cqw solid var(--accent);
+  box-shadow: 0 0 2.4cqw rgba(53, 212, 255, .8);
+}
+.pin .stem { position: absolute; left: -.22cqw; top: -20cqw; width: .44cqw; height: 18.4cqw; background: var(--accent); }
+.pin .lab {
+  position: absolute; left: 0; top: -20cqw; white-space: nowrap;
+  transform: translate(-50%, -100%);
+  background: #fff; color: #0b1017; border-radius: 99cqw;
+  padding: 1.5cqw 4.2cqw; font-size: 4.8cqw; font-weight: 800;
+  box-shadow: 0 1cqw 3cqw rgba(0, 0, 0, .4);
+}
+
+.sub {
+  left: 5cqw; right: 5cqw; bottom: 25cqw; text-align: center;
+  font-size: 6.4cqw; font-weight: 800; line-height: 1.12; color: var(--sub);
+  -webkit-text-stroke: 1.3cqw rgba(0, 0, 0, .7); paint-order: stroke fill;
+  text-shadow: 0 .6cqw 2cqw rgba(0, 0, 0, .6);
+  text-wrap: balance;
+}
+.sub.pop { animation: pop .38s cubic-bezier(.2, .9, .3, 1.2); }
+@keyframes pop { from { transform: translateY(2.4cqw) scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.who { left: 4.5cqw; bottom: 8cqw; display: flex; align-items: center; gap: 2.6cqw; }
+.who .av {
+  width: 10cqw; height: 10cqw; border-radius: 50%; background: #fff; color: #0b1017;
+  display: grid; place-items: center; font-size: 5cqw; font-weight: 800;
+  border: .5cqw solid rgba(255, 255, 255, .5);
+}
+.who .nm { font-size: 4.4cqw; font-weight: 800; text-shadow: 0 .4cqw 1.6cqw rgba(0, 0, 0, .7); }
+
+.prog { left: 0; right: 0; bottom: 0; display: flex; gap: .6cqw; padding: 0 .6cqw .8cqw; }
+.prog i { flex: 1; height: .9cqw; border-radius: 1cqw; background: rgba(255, 255, 255, .28); overflow: hidden; }
+.prog b { display: block; height: 100%; width: 0; background: #fff; }
+
+.fallback {
+  position: absolute; inset: 0; display: grid; place-items: center; padding: 8cqw;
+  text-align: center; font-size: 5cqw; color: var(--muted);
+}
+.toast {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, .7); color: #fff; padding: 2cqw 4.5cqw; border-radius: 3cqw;
+  font-size: 4cqw; opacity: 0; transition: opacity .3s; pointer-events: none; text-align: center;
+}
+.toast.on { opacity: 1; }
+
+.ui { width: 100%; display: grid; gap: 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; }
+button {
+  font: 500 15px/1 var(--body); color: var(--fg); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; min-height: 44px; cursor: pointer;
+}
+button.primary { background: var(--accent); color: #04202a; border-color: var(--accent); font-weight: 500; }
+button:hover { border-color: var(--accent); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+input[type="text"] {
+  font: 400 15px/1.2 var(--body); color: var(--fg); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; min-height: 44px; width: 100%; min-width: 0;
+}
+.hint { margin: 0; font-size: 13px; color: var(--muted); max-width: 60ch; }
+
+body.rec { padding: 0; background: #000; overflow: hidden; }
+body.rec .ui { display: none; }
+body.rec .frame {
+  position: fixed; inset: 0; margin: auto;
+  width: min(100vw, calc(100dvh * 0.5625)); height: auto; min-width: 0;
+  border-radius: 0; border: 0;
+}
+body.render { padding: 0; background: #000; overflow: hidden; }
+body.render .ui { display: none; }
+body.render .frame { position: fixed; inset: 0; width: 100vw; height: 100vh; min-width: 0; aspect-ratio: auto; border: 0; border-radius: 0; }
+body.render .sub.pop { animation: none; }
+@media (prefers-reduced-motion: reduce) { .sub.pop { animation: none; } }
+</style>
+
+<div class="wrap">
+  <div class="frame" id="frame">
+    <canvas id="cv" role="img" aria-label="Animasi 3D skatepark di bawah flyover"></canvas>
+    <div class="hud tag">ilustrasi</div>
+    <div class="hud title"><span id="spotTxt">Kolong flyover</span> <span class="hl">jadi skatepark</span></div>
+    <div class="hud pin" id="pin"><div class="stem"></div><div class="dot"></div><div class="lab" id="pinLab"></div></div>
+    <div class="hud sub" id="sub"></div>
+    <div class="hud who"><div class="av" id="av">N</div><div class="nm" id="hdl">@namaakun</div></div>
+    <div class="hud prog" id="prog"></div>
+    <div class="fallback" id="fb" hidden>Browser ini belum bisa nampilin 3D. Coba buka di Chrome atau Safari terbaru.</div>
+    <div class="toast" id="toast">Ketuk 2x buat keluar dari mode rekam</div>
+  </div>
+
+  <div class="ui">
+    <div class="row">
+      <button class="primary" id="btnPlay" type="button">Jeda</button>
+      <button id="btnRestart" type="button">Ulang dari awal</button>
+      <button id="btnRec" type="button">Mode rekam</button>
+      <button id="btnSound" type="button">Nyalakan suara</button>
+    </div>
+    <div class="fields">
+      <label for="spot">Nama spot (judul)
+        <input id="spot" type="text" value="Kolong flyover" maxlength="28" autocomplete="off">
+      </label>
+      <label for="handle">Nama akun
+        <input id="handle" type="text" value="@namaakun" maxlength="24" autocomplete="off">
+      </label>
+    </div>
+    <p class="hint">Suara baru bunyi setelah lo tekan salah satu tombol di atas. Cara rekam: nyalain perekam layar dengan opsi suara internal, lalu tekan Mode rekam. Videonya 9:16 dan 30 detik per putaran, tinggal dipotong di CapCut.</p>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  var frame = document.getElementById('frame');
+  var cv = document.getElementById('cv');
+  var fb = document.getElementById('fb');
+  var renderer;
+  try {
+    if (!window.THREE) throw new Error('no three');
+    renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, preserveDrawingBuffer: /[?&]render/.test(location.search) });
+  } catch (e) { fb.hidden = false; return; }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+  /* ---------- scene ---------- */
+  var NIGHT = 0x0a1018;
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(NIGHT);
+  scene.fog = new THREE.Fog(NIGHT, 28, 95);
+  var camera = new THREE.PerspectiveCamera(62, 9 / 16, 0.1, 200);
+  var world = new THREE.Group();
+  scene.add(world);
+
+  function M(c) { return new THREE.MeshLambertMaterial({ color: c }); }
+  var mat = {
+    ground: M(0x141b24), road: M(0x0e1319), lane: M(0xcfd3d8),
+    slab: M(0x747c84), slabLine: M(0x5c636b),
+    concrete: M(0x8e949b), deck: M(0x3b4149), pier: M(0x9ca2a8),
+    yellow: M(0xffd400), cyan: M(0x35d4ff), metal: M(0xcdd2d8),
+    strip: new THREE.MeshBasicMaterial({ color: 0xffe2a8 }),
+    bulb: new THREE.MeshBasicMaterial({ color: 0xfff1c9 }),
+    pole: M(0x2a323c)
+  };
+  var bandMats = [M(0x2a9fc0), M(0xc2417f), M(0xd9b100)];
+
+  function box(w, h, d, m, x, y, z, parent) {
+    var o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+    o.position.set(x, y, z);
+    (parent || world).add(o);
+    return o;
+  }
+  function rod(a, b, r, m) {
+    var d = new THREE.Vector3().subVectors(b, a), L = d.length();
+    var o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, L, 10), m);
+    o.position.copy(a).addScaledVector(d, 0.5);
+    o.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.clone().normalize());
+    world.add(o);
+    return o;
+  }
+  /* quarter pipe: flat at x=0, curves up toward +x, extruded along z */
+  function quarter(R, W, m) {
+    var s = new THREE.Shape();
+    s.moveTo(0, 0);
+    s.absarc(0, R, R, -Math.PI / 2, 0, false);
+    s.lineTo(R + 0.35, R);
+    s.lineTo(R + 0.35, 0);
+    s.lineTo(0, 0);
+    var g = new THREE.ExtrudeGeometry(s, { depth: W, bevelEnabled: false, curveSegments: 14 });
+    g.translate(0, 0, -W / 2);
+    return new THREE.Mesh(g, m);
+  }
+  /* wedge: rises toward +x */
+  function wedge(len, h, w, m) {
+    var s = new THREE.Shape();
+    s.moveTo(0, 0); s.lineTo(len, 0); s.lineTo(len, h); s.lineTo(0, 0);
+    var g = new THREE.ExtrudeGeometry(s, { depth: w, bevelEnabled: false });
+    g.translate(0, 0, -w / 2);
+    return new THREE.Mesh(g, m);
+  }
+
+  /* ground, road, slab */
+  box(260, 0.2, 140, mat.ground, 0, -0.1, 0);
+  [-12.5, 12.5].forEach(function (z) {
+    box(260, 0.05, 6, mat.road, 0, 0.01, z);
+    for (var x = -66; x <= 66; x += 7) box(3, 0.02, 0.18, mat.lane, x, 0.05, z);
+  });
+  box(58, 0.3, 13, mat.slab, 0, -0.11, 0);
+  for (var sx = -28; sx <= 28; sx += 2) box(0.04, 0.01, 13, mat.slabLine, sx, 0.045, 0);
+
+  /* flyover */
+  box(150, 1.2, 14.4, mat.deck, 0, 8.6, 0);
+  [-7.1, 7.1].forEach(function (z) { box(150, 0.9, 0.4, mat.concrete, 0, 9.65, z); });
+  [-3.2, 3.2].forEach(function (z) { box(150, 0.05, 0.25, mat.strip, 0, 7.97, z); });
+  [-36, -18, 0, 18, 36, 54, -54].forEach(function (x, i) {
+    [-6.5, 6.5].forEach(function (z) {
+      box(1.6, 8, 1.6, mat.pier, x, 4, z);
+      box(1.66, 1.1, 1.66, bandMats[(i + (z > 0 ? 1 : 0)) % 3], x, 1.5, z);
+    });
+  });
+
+  /* street lamps */
+  for (var lx = -60; lx <= 60; lx += 15) {
+    [-10.5, 10.5].forEach(function (z) {
+      var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 6, 8), mat.pole);
+      pole.position.set(lx, 3, z); world.add(pole);
+      var bulb = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), mat.bulb);
+      bulb.position.set(lx, 6.1, z); world.add(bulb);
+    });
+  }
+
+  /* lights */
+  scene.add(new THREE.HemisphereLight(0x6f8fb8, 0x1a1f26, 0.6));
+  var moon = new THREE.DirectionalLight(0xaabbe0, 0.35);
+  moon.position.set(-20, 30, 20); scene.add(moon);
+  [-24, -8, 8, 24].forEach(function (x) {
+    var p = new THREE.PointLight(0xffd9a8, 1.15, 28, 1.4);
+    p.position.set(x, 6.8, 0); scene.add(p);
+  });
+
+  /* mini ramp at x = -20 */
+  var cx = -20, R = 1.9, RW = 4.2;
+  var qa = quarter(R, RW, mat.concrete); qa.rotation.y = Math.PI; qa.position.set(cx - 3.2, 0.04, 0); world.add(qa);
+  var qb = quarter(R, RW, mat.concrete); qb.position.set(cx + 3.2, 0.04, 0); world.add(qb);
+  [[cx - 3.2 - R, R + 0.04], [cx + 3.2 + R, R + 0.04]].forEach(function (p) {
+    var c = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, RW, 10), mat.metal);
+    c.rotation.x = Math.PI / 2; c.position.set(p[0], p[1], 0); world.add(c);
+  });
+
+  /* ledge + manual pad */
+  box(6, 0.55, 0.9, mat.concrete, -8, 0.315, -2.8);
+  box(6, 0.05, 0.14, mat.yellow, -8, 0.61, -2.45);
+  box(3.2, 0.4, 2.4, mat.concrete, -3.5, 0.24, 2.4);
+  box(3.2, 0.04, 0.12, mat.cyan, -3.5, 0.46, 3.55);
+  var wd = wedge(1.4, 0.4, 2.4, mat.concrete); wd.position.set(-6.5, 0.04, 2.4); world.add(wd);
+
+  /* stair set + rail */
+  for (var i = 0; i < 5; i++) {
+    box(0.9, 0.4 * (i + 1), 5, mat.concrete, 5.45 + 0.9 * i, 0.04 + 0.2 * (i + 1), 0);
+    box(0.12, 0.04, 5, mat.yellow, 5.08 + 0.9 * i, 0.06 + 0.4 * (i + 1), 0);
+  }
+  box(4.2, 2.0, 5, mat.concrete, 11.6, 1.04, 0);
+  function railY(x) { return 1.04 + (x - 4.9) * 0.4348; }
+  rod(new THREE.Vector3(4.9, railY(4.9), 3.6), new THREE.Vector3(9.5, railY(9.5), 3.6), 0.06, mat.metal);
+  rod(new THREE.Vector3(9.5, railY(9.5), 3.6), new THREE.Vector3(13.7, railY(9.5), 3.6), 0.06, mat.metal);
+  [5.6, 7.5, 9.4].forEach(function (x) {
+    rod(new THREE.Vector3(x, 0.04, 3.6), new THREE.Vector3(x, railY(x), 3.6), 0.045, mat.metal);
+  });
+  [11.2, 13.5].forEach(function (x) {
+    rod(new THREE.Vector3(x, 2.04, 3.6), new THREE.Vector3(x, railY(9.5), 3.6), 0.045, mat.metal);
+  });
+
+  /* funbox */
+  box(5.6, 0.9, 5, mat.concrete, 20, 0.49, 0);
+  box(5.6, 0.04, 0.12, mat.cyan, 20, 0.96, 2.4);
+  var fw1 = wedge(1.8, 0.9, 5, mat.concrete); fw1.position.set(15.4, 0.04, 0); world.add(fw1);
+  var fw2 = wedge(1.8, 0.9, 5, mat.concrete); fw2.rotation.y = Math.PI; fw2.position.set(24.6, 0.04, 0); world.add(fw2);
+
+  /* skater */
+  var skater = new THREE.Group(); skater.scale.setScalar(1.15); world.add(skater);
+  var board = new THREE.Group(); skater.add(board);
+  board.add(new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.05, 0.26), M(0xf4f4f0)));
+  board.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.054, 0.27), M(0x35d4ff)));
+  [-0.3, 0.3].forEach(function (wx) {
+    [-0.13, 0.13].forEach(function (wz) {
+      var w = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.05, 10), M(0xffe34d));
+      w.rotation.x = Math.PI / 2; w.position.set(wx, -0.07, wz); board.add(w);
+    });
+  });
+  var rider = new THREE.Group(); skater.add(rider);
+  var shirt = M(0xff5a36), pants = M(0x2b3a55), skin = M(0xd9a87a), cap = M(0x111111);
+  box(0.13, 0.52, 0.15, pants, -0.25, 0.26, 0, rider);
+  box(0.13, 0.52, 0.15, pants, 0.25, 0.26, 0, rider);
+  box(0.28, 0.55, 0.34, shirt, 0, 0.795, 0, rider);
+  box(0.1, 0.48, 0.1, shirt, 0, 0.8, 0.25, rider);
+  box(0.1, 0.48, 0.1, shirt, 0, 0.8, -0.25, rider);
+  var head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 10), skin); head.position.set(0, 1.24, 0); rider.add(head);
+  box(0.3, 0.07, 0.3, cap, 0, 1.36, 0, rider);
+  var blob = new THREE.Mesh(new THREE.CircleGeometry(0.5, 16), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35 }));
+  blob.rotation.x = -Math.PI / 2; blob.position.y = 0.012; skater.add(blob);
+
+  var skaterRot = 0, prevX = null, skSpeed = 0, inHop = false;
+  function animSkater(t, dt) {
+    var P = 21, ph = (t % P) / P, fwd = ph < 0.5;
+    var k = fwd ? ph / 0.5 : 1 - (ph - 0.5) / 0.5;
+    k = k * k * (3 - 2 * k);
+    var x = -16 + 42 * k;
+    var target = fwd ? 0 : Math.PI;
+    skaterRot += (target - skaterRot) * Math.min(1, dt * 5);
+    skater.rotation.y = skaterRot;
+    skater.position.set(x, 0.04, -4.2);
+    skSpeed = (dt > 0 && prevX !== null) ? Math.min(8, Math.abs(x - prevX) / dt) : 0;
+    prevX = x;
+    var cyc = 2.6, c = t % cyc, hp = c / (cyc * 0.28), h = 0;
+    var nowHop = hp < 1;
+    if (nowHop && !inHop) sfxPop(Math.floor(t / cyc) % 2 === 1);
+    if (!nowHop && inHop) sfxLand();
+    inHop = nowHop;
+    board.rotation.x = 0;
+    if (hp < 1) {
+      h = 0.75 * Math.sin(Math.PI * hp);
+      if (Math.floor(t / cyc) % 2 === 1) board.rotation.x = hp * Math.PI * 2;
+    }
+    board.position.y = 0.13 + h;
+    rider.position.y = 0.16 + h;
+    blob.scale.setScalar(1 - h * 0.35);
+  }
+
+  /* rain, only outside the flyover */
+  var N = 520, rp = new Float32Array(N * 6), rs = new Float32Array(N);
+  function resetDrop(i, init) {
+    var x = -50 + Math.random() * 100, s = Math.random() < 0.5 ? -1 : 1, z = s * (7.7 + Math.random() * 20);
+    var y = init ? Math.random() * 26 : 26 + Math.random() * 4;
+    var o = i * 6;
+    rp[o] = x; rp[o + 1] = y; rp[o + 2] = z; rp[o + 3] = x - 0.04; rp[o + 4] = y + 0.9; rp[o + 5] = z;
+    rs[i] = 16 + Math.random() * 8;
+  }
+  for (var d = 0; d < N; d++) resetDrop(d, true);
+  var rg = new THREE.BufferGeometry();
+  var rattr = new THREE.BufferAttribute(rp, 3);
+  rg.setAttribute('position', rattr);
+  var rain = new THREE.LineSegments(rg, new THREE.LineBasicMaterial({ color: 0x8fb7d9, transparent: true, opacity: 0.45 }));
+  rain.frustumCulled = false; scene.add(rain);
+  function animRain(dt) {
+    for (var i = 0; i < N; i++) {
+      var o = i * 6, dy = rs[i] * dt;
+      rp[o + 1] -= dy; rp[o + 4] -= dy;
+      if (rp[o + 1] < 0) resetDrop(i, false);
+    }
+    rattr.needsUpdate = true;
+  }
+
+  /* ---------- timeline ---------- */
+  var V = function (a) { return new THREE.Vector3(a[0], a[1], a[2]); };
+  var BEAT = 6;
+  var BEATS = [
+    { sub: 'Bayangin kalau kolong ini dimanfaatin', spotLabel: true,
+      cam: [[-36, 5.2, 22], [-24, 4.4, 16]], look: [[0, 3.4, 0], [-8, 3.2, 0]], anchor: [-6, 7.95, 5.5] },
+    { sub: 'ada mini ramp buat latihan transisi', pin: 'mini ramp',
+      cam: [[-10, 3, 11], [-15, 3.4, 9]], look: [[-18, 1.6, 0], [-19, 1.8, 0]], anchor: [-14.9, 2.0, 0] },
+    { sub: 'ledge sama manual pad buat flatground', pin: 'ledge + manual pad',
+      cam: [[-1, 2.4, 10], [-9, 2.0, 8]], look: [[-5.5, 0.6, 0], [-5.5, 0.7, 0]], anchor: [-5.5, 0.6, -0.2] },
+    { sub: 'stair set lima anak tangga plus rail', pin: 'stair set + rail',
+      cam: [[15, 3, 10.5], [10.5, 3.8, 9]], look: [[8, 1.2, 0], [8.5, 1.5, 0.5]], anchor: [7.4, railY(7.4), 3.6] },
+    { sub: 'gratis, teduh, gak takut hujan', pin: 'anti hujan',
+      cam: [[-8, 1.5, 9.5], [9, 1.7, 9.5]], look: [[-4, 6.5, -2], [6, 6.8, -2]], anchor: [4, 7.95, -2] }
+  ];
+  var BC = BEATS.map(function (b) {
+    return { c0: V(b.cam[0]), c1: V(b.cam[1]), l0: V(b.look[0]), l1: V(b.look[1]), a: V(b.anchor) };
+  });
+  var TOTAL = BEAT * BEATS.length;
+
+  var subEl = document.getElementById('sub');
+  var pinEl = document.getElementById('pin');
+  var pinLab = document.getElementById('pinLab');
+  var prog = document.getElementById('prog');
+  var spotIn = document.getElementById('spot');
+  var spotTxt = document.getElementById('spotTxt');
+  var handleIn = document.getElementById('handle');
+  var hdl = document.getElementById('hdl');
+  var av = document.getElementById('av');
+  var fills = BEATS.map(function () {
+    var i = document.createElement('i'), b = document.createElement('b');
+    i.appendChild(b); prog.appendChild(i); return b;
+  });
+
+  function spotLabel() { return (spotIn.value.trim() || 'kolong flyover').toLowerCase(); }
+  function applyNames() {
+    spotTxt.textContent = spotIn.value.trim() || 'Kolong flyover';
+    var h = handleIn.value.trim() || '@namaakun';
+    hdl.textContent = h;
+    av.textContent = h.replace(/^@/, '').charAt(0).toUpperCase() || 'N';
+    if (curBeat === 0) pinLab.textContent = spotLabel();
+  }
+  spotIn.addEventListener('input', applyNames);
+  handleIn.addEventListener('input', applyNames);
+
+  var qp = new URLSearchParams(location.search);
+  if (qp.get('spot')) spotIn.value = qp.get('spot');
+  if (qp.get('handle')) handleIn.value = qp.get('handle');
+  applyNames();
+
+  var curBeat = -1;
+  function setBeat(i) {
+    curBeat = i;
+    var b = BEATS[i];
+    subEl.textContent = b.sub;
+    subEl.classList.remove('pop'); void subEl.offsetWidth; subEl.classList.add('pop');
+    pinLab.textContent = b.spotLabel ? spotLabel() : b.pin;
+    sfxWhoosh();
+  }
+  var ease = function (t) { return 0.5 - 0.5 * Math.cos(Math.PI * t); };
+  var tmp = new THREE.Vector3(), look = new THREE.Vector3();
+
+  function render(time) {
+    var bi = Math.min(BEATS.length - 1, Math.floor(time / BEAT));
+    var t = Math.min(1, (time - bi * BEAT) / BEAT);
+    if (bi !== curBeat) setBeat(bi);
+    var b = BC[bi], e = ease(t);
+    camera.position.lerpVectors(b.c0, b.c1, e);
+    look.lerpVectors(b.l0, b.l1, e);
+    camera.lookAt(look);
+    camera.updateMatrixWorld();
+    renderer.render(scene, camera);
+
+    tmp.copy(b.a).project(camera);
+    var W = frame.clientWidth, H = frame.clientHeight;
+    var px = (tmp.x * 0.5 + 0.5) * W, py = (-tmp.y * 0.5 + 0.5) * H;
+    var vis = tmp.z < 1 ? Math.min(1, Math.max(0, (t * BEAT - 0.35) / 0.35), Math.max(0, (BEAT - t * BEAT - 0.2) / 0.3)) : 0;
+    pinEl.style.opacity = vis;
+    pinEl.style.transform = 'translate(' + px.toFixed(1) + 'px,' + py.toFixed(1) + 'px)';
+    var lw = pinLab.offsetWidth, margin = W * 0.04, shift = 0;
+    if (px - lw / 2 < margin) shift = margin - (px - lw / 2);
+    else if (px + lw / 2 > W - margin) shift = (W - margin) - (px + lw / 2);
+    pinLab.style.transform = 'translate(calc(-50% + ' + shift.toFixed(1) + 'px), -100%)';
+
+    for (var i = 0; i < fills.length; i++) {
+      fills[i].style.width = (i < bi ? 100 : i === bi ? t * 100 : 0) + '%';
+    }
+  }
+
+  /* ---------- sizing ---------- */
+  function resize() {
+    var w = frame.clientWidth, h = frame.clientHeight;
+    if (!w || !h) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(frame);
+  window.addEventListener('resize', resize);
+  resize();
+
+  /* ---------- sound (Web Audio, all synthesized, no audio files) ---------- */
+  var AC = null, master, musicBus, sfxBus, noiseBuf, rollGain, rollFilter;
+  var soundOn = true, nextT = 0, step = 0;
+  var SIX = 60 / 96 / 4; /* 96 bpm, one 16th note; 30 s = 12 bars, so the music loops with the video */
+  var CH = [[53, 57, 60, 64], [52, 55, 59, 62], [50, 53, 57, 60], [48, 52, 55, 59]];
+  var BASS = [41, 40, 38, 36];
+  function hz(n) { return 440 * Math.pow(2, (n - 69) / 12); }
+  function loopNoise() {
+    var s = AC.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.start(0, Math.random() * 1.5); return s;
+  }
+  function noiseHit(t, dur, type, freq, vol, bus) {
+    var s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
+    s.buffer = noiseBuf; f.type = type; f.frequency.value = freq;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    s.connect(f); f.connect(g); g.connect(bus || musicBus);
+    s.start(t, Math.random()); s.stop(t + dur + 0.02);
+  }
+  function tone(t, f0, f1, dur, vol, type, bus) {
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || 'sine'; o.frequency.setValueAtTime(f0, t);
+    if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(bus || musicBus); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function keys(t, notes, len, vol) {
+    notes.forEach(function (n, i) {
+      var o = AC.createOscillator(), lp = AC.createBiquadFilter(), g = AC.createGain();
+      o.type = 'triangle'; o.frequency.value = hz(n); o.detune.value = (i - 1.5) * 4;
+      lp.type = 'lowpass'; lp.frequency.value = 1300;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol, t + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0008, t + len);
+      o.connect(lp); lp.connect(g); g.connect(musicBus); o.start(t); o.stop(t + len + 0.05);
+    });
+  }
+  function playStep(s, t) {
+    var b = Math.floor(s / 16) % 4, p = s % 16;
+    if (p === 0) tone(t, 130, 42, 0.28, 0.9, 'sine');
+    if (p === 10) tone(t, 130, 42, 0.28, 0.6, 'sine');
+    if (p === 4 || p === 12) noiseHit(t, 0.14, 'bandpass', 1800, 0.3);
+    if (p % 2 === 0) noiseHit(t + (p % 4 === 2 ? 0.02 : 0), 0.04, 'highpass', 7000, 0.12);
+    if (p === 0) { keys(t, CH[b], 2.3, 0.07); tone(t, hz(BASS[b]), hz(BASS[b]), 1.1, 0.5, 'sine'); }
+    if (p === 6) keys(t, CH[b].slice(1), 0.7, 0.04);
+    if (p === 10) tone(t, hz(BASS[b]), hz(BASS[b]), 0.45, 0.4, 'sine');
+  }
+  function schedule() {
+    while (nextT < AC.currentTime + 0.25) { playStep(step, nextT); nextT += SIX; step++; }
+  }
+  function audioAlign() {
+    if (!AC) return;
+    nextT = AC.currentTime + 0.1;
+    step = Math.round((elapsed % TOTAL) / SIX);
+  }
+  function sfxPop(flip, at) {
+    if (!AC) return;
+    var t = at === undefined ? AC.currentTime : at;
+    noiseHit(t, 0.07, 'bandpass', 2400, 0.55, sfxBus);
+    tone(t, 220, 120, 0.09, 0.35, 'triangle', sfxBus);
+    if (flip) noiseHit(t + 0.2, 0.05, 'bandpass', 3200, 0.3, sfxBus);
+  }
+  function sfxLand(at) {
+    if (!AC) return;
+    var t = at === undefined ? AC.currentTime : at;
+    noiseHit(t, 0.13, 'lowpass', 1100, 0.7, sfxBus);
+    tone(t, 110, 60, 0.14, 0.45, 'sine', sfxBus);
+  }
+  function sfxWhoosh(at) {
+    if (!AC) return;
+    var t = at === undefined ? AC.currentTime : at, s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
+    s.buffer = noiseBuf; f.type = 'bandpass'; f.Q.value = 0.8;
+    f.frequency.setValueAtTime(400, t); f.frequency.exponentialRampToValueAtTime(3500, t + 0.35);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.28, t + 0.12); g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+    s.connect(f); f.connect(g); g.connect(sfxBus); s.start(t, Math.random()); s.stop(t + 0.45);
+  }
+  function updateRoll() {
+    if (!AC || !rollGain) return;
+    var now = AC.currentTime;
+    var tg = (soundOn && playing && !inHop) ? Math.min(0.32, skSpeed * 0.05) : 0;
+    rollGain.gain.setTargetAtTime(tg, now, 0.06);
+    rollFilter.frequency.setTargetAtTime(350 + skSpeed * 90, now, 0.1);
+  }
+  var btnSound = document.getElementById('btnSound');
+  function soundLabel() { btnSound.textContent = !AC ? 'Nyalakan suara' : soundOn ? 'Suara: nyala' : 'Suara: mati'; }
+  function syncAudio() {
+    if (!AC) return;
+    var run = playing && !document.hidden;
+    if (run && AC.state !== 'running') AC.resume();
+    else if (!run && AC.state === 'running') AC.suspend();
+  }
+  function buildGraph() {
+    var comp = AC.createDynamicsCompressor();
+    master = AC.createGain(); master.gain.value = soundOn ? 0.9 : 0;
+    master.connect(comp); comp.connect(AC.destination);
+    musicBus = AC.createGain(); musicBus.gain.value = 0.55; musicBus.connect(master);
+    sfxBus = AC.createGain(); sfxBus.gain.value = 0.9; sfxBus.connect(master);
+    var len = AC.sampleRate * 2, nb = AC.createBuffer(1, len, AC.sampleRate), nd = nb.getChannelData(0);
+    for (var i = 0; i < len; i++) nd[i] = Math.random() * 2 - 1;
+    noiseBuf = nb;
+    var rn = loopNoise(), rhp = AC.createBiquadFilter(), rlp = AC.createBiquadFilter(), rg = AC.createGain();
+    rhp.type = 'highpass'; rhp.frequency.value = 1400; rlp.type = 'lowpass'; rlp.frequency.value = 8000; rg.gain.value = 0.05;
+    rn.connect(rhp); rhp.connect(rlp); rlp.connect(rg); rg.connect(sfxBus);
+    var wn = loopNoise();
+    rollFilter = AC.createBiquadFilter(); rollFilter.type = 'bandpass'; rollFilter.Q.value = 0.8; rollFilter.frequency.value = 400;
+    rollGain = AC.createGain(); rollGain.gain.value = 0;
+    wn.connect(rollFilter); rollFilter.connect(rollGain); rollGain.connect(sfxBus);
+  }
+  function ensureAudio() {
+    if (!AC) {
+      var C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return;
+      try { AC = new C(); } catch (e) { AC = null; return; }
+      buildGraph();
+      audioAlign();
+      setInterval(function () { if (AC && AC.state === 'running') schedule(); }, 30);
+    }
+    syncAudio();
+    soundLabel();
+  }
+  btnSound.addEventListener('click', function () {
+    if (!AC) { ensureAudio(); return; }
+    soundOn = !soundOn;
+    master.gain.setTargetAtTime(soundOn ? 0.9 : 0, AC.currentTime, 0.05);
+    soundLabel();
+  });
+  document.addEventListener('visibilitychange', syncAudio);
+  soundLabel();
+
+  /* ---------- playback ---------- */
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var playing = !reduce, elapsed = reduce ? 1.4 : 0, last = performance.now();
+  var btnPlay = document.getElementById('btnPlay');
+  function syncBtn() { btnPlay.textContent = playing ? 'Jeda' : 'Putar'; }
+  btnPlay.addEventListener('click', function () { playing = !playing; last = performance.now(); syncBtn(); ensureAudio(); });
+  document.getElementById('btnRestart').addEventListener('click', function () {
+    elapsed = 0; playing = true; last = performance.now(); syncBtn(); ensureAudio(); audioAlign();
+  });
+  syncBtn();
+
+  var toast = document.getElementById('toast');
+  function enterRec() {
+    document.body.classList.add('rec');
+    elapsed = 0; playing = true; last = performance.now(); syncBtn(); ensureAudio(); audioAlign();
+    toast.classList.add('on');
+    setTimeout(function () { toast.classList.remove('on'); }, 2200);
+    try { var p = document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+  }
+  function exitRec() {
+    document.body.classList.remove('rec');
+    try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen(); } catch (e) {}
+  }
+  document.getElementById('btnRec').addEventListener('click', enterRec);
+  var lastTap = 0;
+  function maybeExit() { if (document.body.classList.contains('rec')) exitRec(); }
+  frame.addEventListener('dblclick', maybeExit);
+  frame.addEventListener('pointerup', function (ev) {
+    if (ev.pointerType === 'mouse') return;
+    var n = Date.now();
+    if (n - lastTap < 350) maybeExit();
+    lastTap = n;
+  });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') maybeExit(); });
+
+  function loop(now) {
+    var dt = Math.min(0.1, (now - last) / 1000);
+    last = now;
+    if (playing && !document.hidden) elapsed += dt;
+    var time = elapsed % TOTAL;
+    animSkater(elapsed, dt);
+    animRain(playing ? dt : 0);
+    updateRoll();
+    render(time);
+    requestAnimationFrame(loop);
+  }
+  /* ---------- offline render hooks (used by render.js) ---------- */
+  function skaterX(t) { /* same path as animSkater */
+    var P = 21, ph = (t % P) / P, fwd = ph < 0.5, k = fwd ? ph / 0.5 : 1 - (ph - 0.5) / 0.5;
+    k = k * k * (3 - 2 * k);
+    return -16 + 42 * k;
+  }
+  function wavBase64(buf) {
+    var n = buf.length, ch = buf.numberOfChannels, sr = buf.sampleRate;
+    var dv = new DataView(new ArrayBuffer(44 + n * ch * 2));
+    function ws(o, str) { for (var i = 0; i < str.length; i++) dv.setUint8(o + i, str.charCodeAt(i)); }
+    ws(0, 'RIFF'); dv.setUint32(4, 36 + n * ch * 2, true); ws(8, 'WAVE'); ws(12, 'fmt ');
+    dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, ch, true);
+    dv.setUint32(24, sr, true); dv.setUint32(28, sr * ch * 2, true); dv.setUint16(32, ch * 2, true); dv.setUint16(34, 16, true);
+    ws(36, 'data'); dv.setUint32(40, n * ch * 2, true);
+    var chans = []; for (var c = 0; c < ch; c++) chans.push(buf.getChannelData(c));
+    var o = 44;
+    for (var i = 0; i < n; i++) for (var c2 = 0; c2 < ch; c2++) {
+      var v = Math.max(-1, Math.min(1, chans[c2][i]));
+      dv.setInt16(o, v < 0 ? v * 0x8000 : v * 0x7fff, true); o += 2;
+    }
+    var bytes = new Uint8Array(dv.buffer), str = '';
+    for (var j = 0; j < bytes.length; j += 0x8000) str += String.fromCharCode.apply(null, bytes.subarray(j, j + 0x8000));
+    return btoa(str);
+  }
+  window.__renderAudio = async function () {
+    var sr = 44100;
+    AC = new OfflineAudioContext(2, Math.ceil(sr * TOTAL), sr);
+    soundOn = true; buildGraph();
+    nextT = 0; step = 0;
+    while (nextT < TOTAL) { playStep(step, nextT); nextT += SIX; step++; }
+    for (var k = 0; k * 2.6 < TOTAL; k++) { sfxPop(k % 2 === 1, k * 2.6); sfxLand(k * 2.6 + 2.6 * 0.28); }
+    for (var b = 0; b < BEATS.length; b++) sfxWhoosh(b * BEAT);
+    for (var ti = 0; ti < TOTAL; ti += 0.05) {
+      var spd = Math.abs(skaterX(ti + 0.05) - skaterX(ti)) / 0.05;
+      var hop = ((ti % 2.6) / (2.6 * 0.28)) < 1;
+      rollGain.gain.linearRampToValueAtTime(hop ? 0 : Math.min(0.32, spd * 0.05), ti);
+      rollFilter.frequency.linearRampToValueAtTime(350 + spd * 90, ti);
+    }
+    master.gain.setValueAtTime(0.9, TOTAL - 1.5);
+    master.gain.linearRampToValueAtTime(0, TOTAL);
+    var buf = await AC.startRendering();
+    return wavBase64(buf);
+  };
+  window.__frame = function (t, dt) {
+    elapsed = t; playing = true;
+    animSkater(t, dt); animRain(dt); render(t % TOTAL);
+  };
+  if (/[?&]render/.test(location.search)) {
+    document.body.classList.add('render');
+    resize();
+    window.__ready = true;
+  } else {
+    requestAnimationFrame(loop);
+  }
+})();
+</script>
